@@ -1,43 +1,61 @@
+import { linearRegression, linearRegressionLine } from "simple-statistics";
+
 /**
- * Generates a linear regression predictor function based on input arrays of x and y values.
+ * Performs batch prediction using linear regression on a dataset.
  *
- * @param {Array} xValues - Array of x values (independent variable).
- * @param {Array} yValues - Array of y values (dependent variable).
- * @throws {Error} Throws an error if input arrays are not of the same non-zero length or have less than two values.
- * @returns {Function} - A linear regression predictor function that takes a new x value and returns the predicted y value.
+ * @param {Array} data - The input dataset with x and y values.
+ * @param {Array} groupingKeys - An array of keys used for grouping the dataset.
+ * @param {string} xKey - The key representing the independent variable (x values).
+ * @param {string} yKey - The key representing the dependent variable (y values).
+ * @param {Array} newXs - An array of new x values for prediction.
+ * @returns {Array} - An array of objects with predicted y values for the given new x values.
  *
  * @example
- * const xData = [1, 2, 3, 4, 5];
- * const yData = [2, 4, 5, 4, 5];
+ * const inputData = [
+ *   { branch: 'A', period: 1, sales: 2 },
+ *   { branch: 'A', period: 2, sales: 4 },
+ *   { branch: 'A', period: 3, sales: 6 },
+ *   { branch: 'A', period: 4, sales: 8 },
+ *   { branch: 'A', period: 5, sales: 10 },
+ *   { branch: 'A', period: 6, sales: 12 },
+ *   { branch: 'B', period: 2, sales: 3 },
+ *   { branch: 'B', period: 4, sales: 5 },
+ *   { branch: 'B', period: 6, sales: 7 },
+ *   { branch: 'B', period: 8, sales: 12 },
+ *   { branch: 'B', period: 9, sales: 14 },
+ *   { branch: 'B', period: 10, sales: 16 },
+ * ];
  *
- * const predictor = linearRegressionPredictor(xData, yData);
+ * const groupingKeys = ['branch'];
+ * const xKey = 'period';
+ * const yKey = 'sales';
+ * const newXs = [7, 8];
  *
- * // Predict the y value for a new x value
- * const predictedY = predictor(6);
- * console.log(predictedY); // Output: 5.2
+ * const predictions = batchPredict(inputData, groupingKeys, xKey, yKey, newXs);
+ *
+ * // Output:
+ * [
+ *   { branch: 'A', period: 7, sales: 14 },
+ *   { branch: 'A', period: 8, sales: 16 },
+ *   { branch: 'B', period: 7, sales: 9 },
+ *   { branch: 'B', period: 8, sales: 11 }
+ * ]
  */
-export function linearRegressionPredictor(xValues, yValues) {
-  if (xValues.length !== yValues.length || xValues.length === 0) {
-    throw new Error("Input arrays must have the same non-zero length.");
-  }
+export function batchPredict(data, groupingKeys, xKey, yKey, newXs) {
+  const allowedKeys = [...groupingKeys, xKey, yKey];
 
-  if (xValues.length === 1) {
-    throw new Error("Input arrays must have more than one value");
-  }
+  data = removeExtraProperties(data, allowedKeys);
 
-  const n = xValues.length;
+  const groupedData = group(data, groupingKeys).filter((item) => item[xKey].length > 1);
 
-  const xMean = xValues.reduce((sum, x) => sum + x, 0) / n;
-  const yMean = yValues.reduce((sum, y) => sum + y, 0) / n;
+  const predicted = groupedData.map((item) => {
+    const zipped = item[xKey].map((x, i) => [x, item[yKey][i]]);
+    const predictor = linearRegressionLine(linearRegression(zipped));
+    item[yKey] = newXs.map((y) => predictor(y));
+    return item;
+  });
 
-  const numerator = xValues.reduce((sum, x, i) => sum + (x - xMean) * (yValues[i] - yMean), 0);
-  const denominator = xValues.reduce((sum, x) => sum + Math.pow(x - xMean, 2), 0);
-  const slope = numerator / denominator;
-  const intercept = yMean - slope * xMean;
-
-  return function (newX) {
-    return slope * newX + intercept;
-  };
+  return ungroup(predicted, groupingKeys);
 }
 
 /**
@@ -184,62 +202,4 @@ export function ungroup(array, groupingKeys) {
   });
 
   return newArray;
-}
-
-/**
- * Performs batch prediction using linear regression on a dataset.
- *
- * @param {Array} data - The input dataset with x and y values.
- * @param {Array} groupingKeys - An array of keys used for grouping the dataset.
- * @param {string} xKey - The key representing the independent variable (x values).
- * @param {string} yKey - The key representing the dependent variable (y values).
- * @param {Array} newXs - An array of new x values for prediction.
- * @returns {Array} - An array of objects with predicted y values for the given new x values.
- *
- * @example
- * const inputData = [
- *   { department: 'A', x: 1, y: 2 },
- *   { department: 'A', x: 2, y: 4 },
- *   { department: 'A', x: 3, y: 6 },
- *   { department: 'A', x: 4, y: 8 },
- *   { department: 'A', x: 5, y: 10 },
- *   { department: 'A', x: 6, y: 12 },
- *   { department: 'B', x: 2, y: 3 },
- *   { department: 'B', x: 4, y: 5 },
- *   { department: 'B', x: 6, y: 7 },
- *   { department: 'B', x: 8, y: 12 },
- *   { department: 'B', x: 9, y: 14 },
- *   { department: 'B', x: 10, y: 16 },
- * ];
- *
- * const groupingKeys = ['department'];
- * const xKey = 'x';
- * const yKey = 'y';
- * const new_Xs = [7, 8];
- *
- * const predictions = batchPredict(inputData, groupingKeys, xKey, yKey, new_Xs);
- *
- * // Output:
- * [
- *   { department: 'A', x: 7, y: 14 },
- *   { department: 'A', x: 8, y: 16 },
- *   { department: 'B', x: 7, y: 9 },
- *   { department: 'B', x: 8, y: 11 }
- * ]
- */
-export function batchPredict(data, groupingKeys, xKey, yKey, newXs) {
-  const allowedKeys = [...groupingKeys, xKey, yKey];
-
-  data = removeExtraProperties(data, allowedKeys);
-
-  const groupedData = group(data, groupingKeys).filter((item) => item[xKey].length > 1);
-
-  const predicted = groupedData.map((item) => {
-    const predictor = linearRegressionPredictor(item[xKey], item[yKey]);
-    item[xKey] = newXs;
-    item[yKey] = newXs.map((y) => predictor(y));
-    return item;
-  });
-
-  return ungroup(predicted, groupingKeys);
 }

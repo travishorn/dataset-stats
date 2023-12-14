@@ -1,7 +1,7 @@
 {
-  "name": "linear-regression",
+  "name": "dataset-stats",
   "version": "0.1.0",
-  "description": "",
+  "description": "Functions for performing statistics on datasets.",
   "private": true,
   "main": "index.js",
   "scripts": {
@@ -11,7 +11,7 @@
   "author": "Travis Horn <travis@travishorn.com> (https://travishorn.com/)",
   "license": "MIT",
   "type": "module",
-  "devDependencies": {
-    "papaparse": "^5.4.1"
+  "dependencies": {
+    "simple-statistics": "^7.8.3"
   }
 }
