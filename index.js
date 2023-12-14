@@ -51,6 +51,7 @@ export function batchPredict(data, groupingKeys, xKey, yKey, newXs) {
   const predicted = groupedData.map((item) => {
     const zipped = item[xKey].map((x, i) => [x, item[yKey][i]]);
     const predictor = linearRegressionLine(linearRegression(zipped));
+    item[xKey] = newXs;
     item[yKey] = newXs.map((y) => predictor(y));
     return item;
   });
